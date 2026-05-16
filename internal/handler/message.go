@@ -19,8 +19,10 @@ func (h *Handler) handleSend(w http.ResponseWriter, r *http.Request) {
 		r.Header.Get("Content-Type"), r.ContentLength)
 
 	var content string
+	log.Printf("handleSend body nil? %v", r.Body == nil)
 	if r.Body != nil {
 		raw, err := io.ReadAll(r.Body)
+		log.Printf("handleSend raw bytes=%d err=%v body=%q", len(raw), err, string(raw))
 		if err != nil {
 			log.Printf("handleSend read body error: %v", err)
 			http.Error(w, "failed to read body", http.StatusBadRequest)
