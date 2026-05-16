@@ -8,7 +8,7 @@ import boto3
 
 GENERATED_BUCKET = os.environ["GENERATED_BUCKET"]
 BEDROCK_MODEL_ID = os.environ.get(
-    "BEDROCK_MODEL_ID", "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+    "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-6"
 )
 
 s3 = boto3.client("s3")

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -15,11 +16,10 @@ type lambdaHandler struct {
 }
 
 func (h *lambdaHandler) Handle(ctx context.Context, req events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
-	log.Printf("BRIDGE method=%s path=%s bodyLen=%d contentType=%s",
+	log.Printf("BRIDGE method=%s path=%s bodyLen=%d ctype=%s",
 		req.RequestContext.HTTP.Method, req.RawPath, len(req.Body), req.Headers["content-type"])
 
-	bodyReader := strings.NewReader(req.Body)
-	httpReq, err := http.NewRequestWithContext(ctx, req.RequestContext.HTTP.Method, req.RawPath, bodyReader)
+	httpReq, err := http.NewRequestWithContext(ctx, req.RequestContext.HTTP.Method, req.RawPath, nil)
 	if err != nil {
 		log.Printf("BRIDGE NewRequest error: %v", err)
 		return events.LambdaFunctionURLResponse{StatusCode: 500, Body: "internal error"}, nil
@@ -31,9 +31,14 @@ func (h *lambdaHandler) Handle(ctx context.Context, req events.LambdaFunctionURL
 		httpReq.Header.Set(k, v)
 	}
 
-	httpReq.ContentLength = int64(len(req.Body))
-	log.Printf("BRIDGE method=%s path=%s bodyLen=%d content-type=%s",
-		req.RequestContext.HTTP.Method, req.RawPath, len(req.Body), req.Headers["content-type"])
+	if len(req.Body) > 0 {
+		body := req.Body
+		httpReq.Body = io.NopCloser(strings.NewReader(body))
+		httpReq.ContentLength = int64(len(body))
+		httpReq.GetBody = func() (io.ReadCloser, error) {
+			return io.NopCloser(strings.NewReader(body)), nil
+		}
+	}
 
 	rec := &responseRecorder{
 		headers:    make(http.Header),
