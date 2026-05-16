@@ -39,6 +39,7 @@ export class AppScaffoldStack extends cdk.Stack {
     new s3deploy.BucketDeployment(this, 'DeployStaticAssets', {
       sources: [s3deploy.Source.asset('../dist/static')],
       destinationBucket: staticAssets.bucket,
+      destinationKeyPrefix: 'static/',
       distribution: cf.distribution,
       distributionPaths: ['/static/*'],
     });
