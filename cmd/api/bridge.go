@@ -28,6 +28,7 @@ func (h *lambdaHandler) Handle(ctx context.Context, req events.LambdaFunctionURL
 	var body io.Reader
 	if len(req.Body) > 0 {
 		body = strings.NewReader(req.Body)
+		log.Printf("BRIDGE raw body=%q", req.Body)
 	}
 
 	httpReq := httptest.NewRequest(req.RequestContext.HTTP.Method, u.String(), body)
