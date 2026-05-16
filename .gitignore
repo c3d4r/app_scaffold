@@ -1,0 +1,37 @@
+# Build output
+dist/
+
+# Go
+*.exe
+*.test
+*.out
+
+# Templ generated Go files
+*_templ.go
+
+# Node / CDK
+node_modules/
+cdk.out/
+cdk/**/*.js
+cdk/**/*.d.ts
+!cdk/**/*.ts
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Local dev data
+data/
+
+# Environment
+.env
+.env.local
