@@ -2,6 +2,9 @@ GENERATED_BUCKET=
 DURABLE_LAMBDA_NAME=app-scaffold-durable
 BEDROCK_MODEL_ID=us.anthropic.claude-3-5-sonnet-20241022-v2:0
 
+GOPATH      := $(shell go env GOPATH)
+export PATH := $(GOPATH)/bin:$(PATH)
+
 .PHONY: dev build deploy clean check
 
 # ─── Development ────────────────────────────────────────────────────────────────
