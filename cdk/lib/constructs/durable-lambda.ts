@@ -18,7 +18,7 @@ export class DurableLambda extends Construct {
       runtime: lambda.Runtime.PYTHON_3_13,
       architecture: lambda.Architecture.ARM_64,
       handler: 'main.handler',
-      code: lambda.Code.fromAsset('../dist/durable'),
+      code: lambda.Code.fromAsset('../../../dist/durable'),
       memorySize: 256,
       timeout: cdk.Duration.seconds(30),
       environment: {

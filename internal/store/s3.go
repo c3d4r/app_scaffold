@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/c3d4r/app_scaffold/internal/models"
 )
@@ -29,6 +31,9 @@ func (s *S3Store) GetChat(ctx context.Context, chatID string) (*models.Chat, err
 		Key:    aws.String(key),
 	})
 	if err != nil {
+		if isKeyNotFound(err) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("get chat from s3: %w", err)
 	}
 	defer resp.Body.Close()
@@ -89,4 +94,16 @@ func (s *S3Store) PutFragment(ctx context.Context, chatID, msgID string, html []
 		return fmt.Errorf("put fragment to s3: %w", err)
 	}
 	return nil
+}
+
+func isKeyNotFound(err error) bool {
+	var nsk *s3types.NoSuchKey
+	if errors.As(err, &nsk) {
+		return true
+	}
+	var nf *s3types.NotFound
+	if errors.As(err, &nf) {
+		return true
+	}
+	return false
 }

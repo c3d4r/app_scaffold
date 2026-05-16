@@ -37,3 +37,4 @@ data/
 # Environment
 .env
 .env.local
+bridge
