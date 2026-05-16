@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"io"
 	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/google/uuid"
 
@@ -16,12 +18,22 @@ func (h *Handler) handleSend(w http.ResponseWriter, r *http.Request) {
 	log.Printf("handleSend Content-Type=%q ContentLength=%d",
 		r.Header.Get("Content-Type"), r.ContentLength)
 
-	if err := r.ParseForm(); err != nil {
-		log.Printf("handleSend ParseForm error: %v", err)
-		http.Error(w, "invalid form", http.StatusBadRequest)
-		return
+	var content string
+	if r.Body != nil {
+		raw, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Printf("handleSend read body error: %v", err)
+			http.Error(w, "failed to read body", http.StatusBadRequest)
+			return
+		}
+		values, err := url.ParseQuery(string(raw))
+		if err != nil {
+			log.Printf("handleSend parse body error: %v", err)
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
+		content = values.Get("content")
 	}
-	content := r.FormValue("content")
 	log.Printf("handleSend content=%q", content)
 	if content == "" {
 		http.Error(w, "content required", http.StatusBadRequest)
