@@ -19,7 +19,7 @@ export class ApiLambda extends Construct {
       runtime: lambda.Runtime.PROVIDED_AL2023,
       architecture: lambda.Architecture.ARM_64,
       handler: 'bootstrap',
-      code: lambda.Code.fromAsset('../../../dist/api'),
+      code: lambda.Code.fromAsset('../dist/api'),
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
       environment: {
@@ -27,8 +27,8 @@ export class ApiLambda extends Construct {
         GENERATED_BUCKET: props.generatedBucketName,
         DURABLE_LAMBDA_NAME: props.durableFunctionName,
       },
-      logFormat: lambda.LogFormat.JSON,
-      applicationLogLevel: 'INFO' as any,
+      loggingFormat: lambda.LoggingFormat.JSON,
+      applicationLogLevelV2: lambda.ApplicationLogLevel.INFO,
     });
 
     this.fn.addToRolePolicy(
