@@ -1,0 +1,21 @@
+package template
+
+import "github.com/c3d4r/app_scaffold/internal/models"
+
+templ ChatPage(chat models.Chat) {
+	@Base("Chat") {
+		<div class="max-w-2xl mx-auto min-h-screen flex flex-col">
+			<header class="py-4 px-6 border-b border-gray-200 bg-white sticky top-0">
+				<h1 class="text-lg font-semibold text-gray-800">Chat</h1>
+			</header>
+			<div id="messages" class="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+				for _, m := range chat.Messages {
+					@Message(m, chat.ID)
+				}
+			</div>
+			<div class="sticky bottom-0 bg-white border-t border-gray-200">
+				@ChatInput(chat.ID)
+			</div>
+		</div>
+	}
+}

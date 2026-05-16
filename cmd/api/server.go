@@ -1,0 +1,61 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+
+	appconfig "github.com/c3d4r/app_scaffold/internal/config"
+	"github.com/c3d4r/app_scaffold/internal/handler"
+	"github.com/c3d4r/app_scaffold/internal/store"
+)
+
+func createHandler() (http.Handler, error) {
+	cfg := appconfig.Load()
+	ctx := context.Background()
+
+	var chatStore store.ChatStore
+	var starter handler.ProcessStarter
+
+	if cfg.IsProduction() {
+		awsCfg, err := config.LoadDefaultConfig(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("aws config: %w", err)
+		}
+		chatStore = store.NewS3Store(s3.NewFromConfig(awsCfg), cfg.GeneratedBucket)
+		starter = handler.LambdaProcessStarter(lambda.NewFromConfig(awsCfg), cfg.DurableLambdaName)
+	} else {
+		chatStore = store.NewFSStore("data")
+		awsCfg, err := config.LoadDefaultConfig(ctx)
+		if err != nil {
+			log.Printf("no AWS config, using echo mode: %v", err)
+			starter = handler.EchoProcessStarter(chatStore)
+		} else {
+			starter = handler.InlineProcessStarter(
+				chatStore,
+				bedrockruntime.NewFromConfig(awsCfg),
+				cfg.BedrockModelID,
+			)
+		}
+	}
+
+	return handler.New(chatStore, starter).Routes(), nil
+}
+
+func startDevServer(h http.Handler) {
+	srv := &http.Server{
+		Addr:         ":8080",
+		Handler:      h,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 15 * time.Second,
+	}
+	fmt.Println("dev server listening on http://localhost:8080")
+	log.Fatal(srv.ListenAndServe())
+}

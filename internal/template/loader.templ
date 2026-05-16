@@ -1,0 +1,12 @@
+package template
+
+templ Loader(chatID, msgID string) {
+	<div hx-get={ "/" + chatID + "/msgs/" + msgID }
+	     hx-trigger="every 1s"
+	     hx-swap="outerHTML"
+	     class="flex justify-start">
+		<div class="bg-gray-100 text-gray-400 rounded-2xl rounded-bl-md px-4 py-2.5 shadow-sm animate-pulse">
+			Thinking...
+		</div>
+	</div>
+}

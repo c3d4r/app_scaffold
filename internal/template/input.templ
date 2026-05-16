@@ -1,0 +1,20 @@
+package template
+
+templ ChatInput(chatID string) {
+	<form hx-post={ "/" + chatID }
+	      hx-swap="beforeend"
+	      hx-target="#messages"
+	      hx-on--after-request="this.reset()"
+	      class="flex gap-3 p-4">
+		<input type="text"
+		       name="content"
+		       placeholder="Type a message..."
+		       autocomplete="off"
+		       required="required"
+		       class="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
+		<button type="submit"
+		        class="bg-blue-500 text-white rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-blue-600 active:bg-blue-700 transition-colors">
+			Send
+		</button>
+	</form>
+}

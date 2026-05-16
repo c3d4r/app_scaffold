@@ -1,0 +1,21 @@
+package template
+
+import "github.com/c3d4r/app_scaffold/internal/models"
+
+templ Message(m models.Message, chatID string) {
+	if m.Role == "user" {
+		<div class="flex justify-end">
+			<div class="bg-blue-500 text-white rounded-2xl rounded-br-md px-4 py-2.5 max-w-[80%] shadow-sm">
+				{ m.Content }
+			</div>
+		</div>
+	} else if m.Status == "processing" {
+		@Loader(chatID, m.ID)
+	} else {
+		<div id={ "msg-" + m.ID } class="flex justify-start">
+			<div class="bg-gray-100 text-gray-800 rounded-2xl rounded-bl-md px-4 py-2.5 max-w-[80%] shadow-sm">
+				{ m.Content }
+			</div>
+		</div>
+	}
+}

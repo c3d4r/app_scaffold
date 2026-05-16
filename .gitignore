@@ -5,6 +5,8 @@ dist/
 *.exe
 *.test
 *.out
+/api
+tmp/
 
 # Templ generated Go files
 *_templ.go

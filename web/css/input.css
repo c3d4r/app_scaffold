@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+@theme {
+  --color-chat-bg: #f8fafc;
+  --color-user-bubble: #3b82f6;
+  --color-assistant-bubble: #f1f5f9;
+  --color-border: #e2e8f0;
+}
