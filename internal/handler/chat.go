@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/c3d4r/app_scaffold/internal/models"
@@ -16,6 +17,7 @@ func (h *Handler) handleChat(w http.ResponseWriter, r *http.Request) {
 
 	chat, err := h.store.GetChat(r.Context(), chatID)
 	if err != nil {
+		log.Printf("ERROR GetChat(%q): %v", chatID, err)
 		http.Error(w, "failed to load chat", http.StatusInternalServerError)
 		return
 	}

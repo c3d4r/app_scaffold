@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -24,6 +25,7 @@ func (h *Handler) handleSend(w http.ResponseWriter, r *http.Request) {
 
 	chat, err := h.store.GetChat(r.Context(), chatID)
 	if err != nil {
+		log.Printf("ERROR handleSend GetChat(%q): %v", chatID, err)
 		http.Error(w, "failed to load chat", http.StatusInternalServerError)
 		return
 	}
@@ -47,6 +49,7 @@ func (h *Handler) handleSend(w http.ResponseWriter, r *http.Request) {
 	chat.AddMessage(assistantMsg)
 
 	if err := h.store.SaveChat(r.Context(), chat); err != nil {
+		log.Printf("ERROR handleSend SaveChat(%q): %v", chatID, err)
 		http.Error(w, "failed to save chat", http.StatusInternalServerError)
 		return
 	}

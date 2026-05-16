@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 
 	"github.com/c3d4r/app_scaffold/internal/models"
 )
@@ -104,6 +106,10 @@ func isKeyNotFound(err error) bool {
 	var nf *s3types.NotFound
 	if errors.As(err, &nf) {
 		return true
+	}
+	var re *smithyhttp.ResponseError
+	if errors.As(err, &re) {
+		return re.HTTPStatusCode() == http.StatusNotFound
 	}
 	return false
 }
