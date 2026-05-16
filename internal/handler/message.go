@@ -13,11 +13,16 @@ import (
 func (h *Handler) handleSend(w http.ResponseWriter, r *http.Request) {
 	chatID := r.PathValue("chatId")
 
+	log.Printf("handleSend Content-Type=%q ContentLength=%d",
+		r.Header.Get("Content-Type"), r.ContentLength)
+
 	if err := r.ParseForm(); err != nil {
+		log.Printf("handleSend ParseForm error: %v", err)
 		http.Error(w, "invalid form", http.StatusBadRequest)
 		return
 	}
 	content := r.FormValue("content")
+	log.Printf("handleSend content=%q", content)
 	if content == "" {
 		http.Error(w, "content required", http.StatusBadRequest)
 		return
