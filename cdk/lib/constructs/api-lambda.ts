@@ -34,10 +34,14 @@ export class ApiLambda extends Construct {
     this.fn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['s3:GetObject', 's3:PutObject'],
-        resources: [
-          `arn:aws:s3:::${props.generatedBucketName}`,
-          `arn:aws:s3:::${props.generatedBucketName}/*`,
-        ],
+        resources: [`arn:aws:s3:::${props.generatedBucketName}/*`],
+      })
+    );
+
+    this.fn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:ListBucket'],
+        resources: [`arn:aws:s3:::${props.generatedBucketName}`],
       })
     );
 

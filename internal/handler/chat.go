@@ -12,6 +12,10 @@ func (h *Handler) handleHome(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/default", http.StatusFound)
 }
 
+func (h *Handler) handleFavicon(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) handleChat(w http.ResponseWriter, r *http.Request) {
 	chatID := r.PathValue("chatId")
 
