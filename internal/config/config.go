@@ -14,7 +14,7 @@ func Load() *Config {
 		AppEnv:            getEnv("APP_ENV", "development"),
 		GeneratedBucket:   getEnv("GENERATED_BUCKET", "app-scaffold-generated"),
 		DurableLambdaName: getEnv("DURABLE_LAMBDA_NAME", "app-scaffold-durable"),
-		BedrockModelID:    getEnv("BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-6"),
+		BedrockModelID:    getEnv("BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
 	}
 }
 
