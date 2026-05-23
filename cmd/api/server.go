@@ -9,10 +9,12 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
+	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	appconfig "github.com/c3d4r/app_scaffold/internal/config"
+	"github.com/c3d4r/app_scaffold/internal/auth"
 	"github.com/c3d4r/app_scaffold/internal/handler"
 	"github.com/c3d4r/app_scaffold/internal/store"
 )
@@ -23,6 +25,9 @@ func createHandler() (http.Handler, error) {
 
 	var chatStore store.ChatStore
 	var starter handler.ProcessStarter
+	var sessionStore auth.SessionStore
+	var cognito *auth.CognitoConfig
+	var cognitoClient *handler.CognitoClient
 
 	if cfg.IsProduction() {
 		awsCfg, err := config.LoadDefaultConfig(ctx)
@@ -31,8 +36,23 @@ func createHandler() (http.Handler, error) {
 		}
 		chatStore = store.NewS3Store(s3.NewFromConfig(awsCfg), cfg.GeneratedBucket)
 		starter = handler.LambdaProcessStarter(lambda.NewFromConfig(awsCfg), cfg.DurableLambdaName)
+		sessionStore = auth.NewS3SessionStore(s3.NewFromConfig(awsCfg), cfg.GeneratedBucket)
+
+		if cfg.CognitoUserPoolID != "" {
+			cip := cognitoidentityprovider.NewFromConfig(awsCfg)
+			cognitoClient = handler.NewCognitoClient(cip, cfg.CognitoClientID, cfg.CognitoClientSecret)
+			cognito = &auth.CognitoConfig{
+				UserPoolID:   cfg.CognitoUserPoolID,
+				ClientID:     cfg.CognitoClientID,
+				ClientSecret: cfg.CognitoClientSecret,
+				Domain:       cfg.CognitoDomain,
+				Region:       cfg.CognitoRegion,
+			}
+		}
 	} else {
 		chatStore = store.NewFSStore("data")
+		sessionStore = auth.NewFSSessionStore("data")
+
 		awsCfg, err := config.LoadDefaultConfig(ctx)
 		if err != nil {
 			log.Printf("no AWS config, using echo mode: %v", err)
@@ -43,10 +63,21 @@ func createHandler() (http.Handler, error) {
 				bedrockruntime.NewFromConfig(awsCfg),
 				cfg.BedrockModelID,
 			)
+			if cfg.CognitoUserPoolID != "" {
+				cip := cognitoidentityprovider.NewFromConfig(awsCfg)
+				cognitoClient = handler.NewCognitoClient(cip, cfg.CognitoClientID, cfg.CognitoClientSecret)
+				cognito = &auth.CognitoConfig{
+					UserPoolID:   cfg.CognitoUserPoolID,
+					ClientID:     cfg.CognitoClientID,
+					ClientSecret: cfg.CognitoClientSecret,
+					Domain:       cfg.CognitoDomain,
+					Region:       cfg.CognitoRegion,
+				}
+			}
 		}
 	}
 
-	return handler.New(chatStore, starter).Routes(), nil
+	return handler.New(chatStore, starter).WithAuth(sessionStore, cognito, cognitoClient, cfg.CallbackURL).Routes(), nil
 }
 
 func startDevServer(h http.Handler) {

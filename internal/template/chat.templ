@@ -1,12 +1,21 @@
 package template
 
 import "github.com/c3d4r/app_scaffold/internal/models"
+import "github.com/c3d4r/app_scaffold/internal/auth"
 
-templ ChatPage(chat models.Chat) {
+templ ChatPage(chat models.Chat, user *auth.Session) {
 	@Base("Chat") {
 		<div class="max-w-2xl mx-auto min-h-screen flex flex-col">
-			<header class="py-4 px-6 border-b border-gray-200 bg-white sticky top-0">
+			<header class="py-4 px-6 border-b border-gray-200 bg-white sticky top-0 flex items-center justify-between">
 				<h1 class="text-lg font-semibold text-gray-800">Chat</h1>
+				<div class="flex items-center gap-4">
+					if user != nil {
+						<span class="text-sm text-gray-600">{ user.Username }</span>
+						<form action="/auth/logout" method="post">
+							<button type="submit" class="text-sm text-gray-500 hover:text-gray-700 cursor-pointer">Sign out</button>
+						</form>
+					}
+				</div>
 			</header>
 			<div id="messages" class="flex-1 overflow-y-auto px-4 py-6 space-y-4">
 				for _, m := range chat.Messages {

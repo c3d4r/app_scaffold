@@ -2,10 +2,20 @@ import { Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import { SecretValue } from 'aws-cdk-lib';
 
 export interface ApiLambdaProps {
   generatedBucketName: string;
   durableFunctionName: string;
+}
+
+export interface CognitoEnv {
+  userPoolId: string;
+  clientId: string;
+  clientSecret: SecretValue;
+  domain: string;
+  region: string;
+  callbackUrl: string;
 }
 
 export class ApiLambda extends Construct {
@@ -33,7 +43,7 @@ export class ApiLambda extends Construct {
 
     this.fn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['s3:GetObject', 's3:PutObject'],
+        actions: ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
         resources: [`arn:aws:s3:::${props.generatedBucketName}/*`],
       })
     );
@@ -60,5 +70,14 @@ export class ApiLambda extends Construct {
     this.functionUrl = this.fn.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
     });
+  }
+
+  public addCognitoEnv(env: CognitoEnv) {
+    this.fn.addEnvironment('COGNITO_USER_POOL_ID', env.userPoolId);
+    this.fn.addEnvironment('COGNITO_CLIENT_ID', env.clientId);
+    this.fn.addEnvironment('COGNITO_CLIENT_SECRET', env.clientSecret.unsafeUnwrap());
+    this.fn.addEnvironment('COGNITO_DOMAIN', env.domain);
+    this.fn.addEnvironment('COGNITO_REGION', env.region);
+    this.fn.addEnvironment('CALLBACK_URL', env.callbackUrl);
   }
 }

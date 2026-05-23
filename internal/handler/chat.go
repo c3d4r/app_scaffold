@@ -29,8 +29,10 @@ func (h *Handler) handleChat(w http.ResponseWriter, r *http.Request) {
 		chat = models.NewChat(chatID)
 	}
 
+	user := h.userFromSession(r)
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := template.ChatPage(*chat).Render(r.Context(), w); err != nil {
+	if err := template.ChatPage(*chat, user).Render(r.Context(), w); err != nil {
 		http.Error(w, "failed to render", http.StatusInternalServerError)
 	}
 }
