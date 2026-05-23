@@ -1,0 +1,63 @@
+package template
+
+import "github.com/c3d4r/app_scaffold/internal/models"
+
+templ Sidebar(chats []models.ChatSummary, currentChatID string) {
+	<aside x-data="{ open: window.innerWidth >= 768 }"
+	       x-init="window.addEventListener('resize', () => { if (window.innerWidth >= 768) open = true })"
+	       @toggle-sidebar.window="open = !open"
+	       @keydown.window.escape="open = false"
+	       class="flex-shrink-0">
+		<div x-show="open"
+		     x-transition.opacity
+		     @click="open = false"
+		     class="md:hidden fixed inset-0 bg-black/30 z-40">
+		</div>
+		<div x-show="open"
+		     x-transition:enter="transition-transform duration-200"
+		     x-transition:enter-start="-translate-x-full"
+		     x-transition:enter-end="translate-x-0"
+		     x-transition:leave="transition-transform duration-200"
+		     x-transition:leave-start="translate-x-0"
+		     x-transition:leave-end="-translate-x-full"
+		     class="fixed md:relative inset-y-0 left-0 z-50 md:z-auto w-64 bg-white border-r border-gray-200 flex flex-col">
+			<div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+				<span class="font-semibold text-sm text-gray-700">Chats</span>
+				<button @click="open = false"
+				        aria-label="Close sidebar"
+				        class="p-1 rounded hover:bg-gray-100 cursor-pointer">
+					<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+					</svg>
+				</button>
+			</div>
+			<div class="px-3 py-2">
+				<form action="/chats" method="post">
+					<button type="submit"
+					        class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+						</svg>
+						New chat
+					</button>
+				</form>
+			</div>
+			<div class="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">
+				for i, c := range chats {
+					<a href={ templ.URL("/" + c.ID) }
+					   class={ "block px-3 py-2 rounded-lg text-sm truncate transition-colors " + chatRowClass(c.ID, currentChatID, i) }
+					   title={ c.Title }>
+						{ c.Title }
+					</a>
+				}
+			</div>
+		</div>
+	</aside>
+}
+
+func chatRowClass(id, currentID string, index int) string {
+	if id == currentID {
+		return "bg-gray-200 text-gray-900 font-medium"
+	}
+	return "text-gray-700 hover:bg-gray-100"
+}

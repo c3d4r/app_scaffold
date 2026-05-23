@@ -98,6 +98,50 @@ func (s *S3Store) PutFragment(ctx context.Context, chatID, msgID string, html []
 	return nil
 }
 
+func (s *S3Store) ListChats(ctx context.Context, userID string) ([]models.ChatSummary, error) {
+	key := "users/" + userID + "/chats.json"
+	resp, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		if isKeyNotFound(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get chat index from s3: %w", err)
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read chat index: %w", err)
+	}
+
+	var chats []models.ChatSummary
+	if err := json.Unmarshal(data, &chats); err != nil {
+		return nil, fmt.Errorf("parse chat index: %w", err)
+	}
+	return chats, nil
+}
+
+func (s *S3Store) PutChatIndex(ctx context.Context, userID string, chats []models.ChatSummary) error {
+	data, err := json.Marshal(chats)
+	if err != nil {
+		return fmt.Errorf("marshal chat index: %w", err)
+	}
+	key := "users/" + userID + "/chats.json"
+	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(data),
+		ContentType: aws.String("application/json"),
+	})
+	if err != nil {
+		return fmt.Errorf("put chat index to s3: %w", err)
+	}
+	return nil
+}
+
 func isKeyNotFound(err error) bool {
 	var nsk *s3types.NoSuchKey
 	if errors.As(err, &nsk) {

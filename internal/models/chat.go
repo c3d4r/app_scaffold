@@ -13,6 +13,12 @@ type Chat struct {
 	Messages []Message `json:"messages"`
 }
 
+type ChatSummary struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
 func NewChat(id string) *Chat {
 	return &Chat{
 		ID:       id,

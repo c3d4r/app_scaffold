@@ -51,6 +51,7 @@ func (h *Handler) Routes() http.Handler {
 
 	protected := http.NewServeMux()
 	protected.HandleFunc("GET /{$}", h.handleHome)
+	protected.HandleFunc("POST /chats", h.handleCreateChat)
 	protected.HandleFunc("GET /favicon.ico", h.handleFavicon)
 	protected.HandleFunc("GET /{chatId}", h.handleChat)
 	protected.HandleFunc("POST /{chatId}", h.handleSend)

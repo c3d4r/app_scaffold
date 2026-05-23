@@ -58,3 +58,31 @@ func (s *FSStore) PutFragment(_ context.Context, chatID, msgID string, html []by
 	}
 	return os.WriteFile(filepath.Join(dir, msgID+".html"), html, 0644)
 }
+
+func (s *FSStore) ListChats(_ context.Context, userID string) ([]models.ChatSummary, error) {
+	path := filepath.Join(s.root, "users", userID, "chats.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read chat index: %w", err)
+	}
+	var chats []models.ChatSummary
+	if err := json.Unmarshal(data, &chats); err != nil {
+		return nil, fmt.Errorf("parse chat index: %w", err)
+	}
+	return chats, nil
+}
+
+func (s *FSStore) PutChatIndex(_ context.Context, userID string, chats []models.ChatSummary) error {
+	dir := filepath.Join(s.root, "users", userID)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("mkdir: %w", err)
+	}
+	data, err := json.Marshal(chats)
+	if err != nil {
+		return fmt.Errorf("marshal chat index: %w", err)
+	}
+	return os.WriteFile(filepath.Join(dir, "chats.json"), data, 0644)
+}

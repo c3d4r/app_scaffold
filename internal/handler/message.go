@@ -71,6 +71,10 @@ func (h *Handler) handleSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if user := h.userFromSession(r); user != nil {
+		h.updateChatIndex(r.Context(), user.UserID, chat)
+	}
+
 	if err := h.processMsg(chatID, assistantMsg.ID); err != nil {
 		http.Error(w, "failed to start processing", http.StatusInternalServerError)
 		return
