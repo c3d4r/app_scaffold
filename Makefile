@@ -1,6 +1,6 @@
 GENERATED_BUCKET=
 DURABLE_LAMBDA_NAME=app-scaffold-durable
-BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-6
+BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0
 
 GOPATH      := $(shell go env GOPATH)
 export PATH := $(GOPATH)/bin:$(PATH)
