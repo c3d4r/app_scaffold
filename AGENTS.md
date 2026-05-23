@@ -40,9 +40,17 @@ CloudFront routes: `/static/*` → S3, `/generated/*` → S3, `/*` → Go Lambda
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `APP_ENV` | `development` | `"production"` enables S3 + Lambda invoke |
-| `BEDROCK_MODEL_ID` | `us.anthropic.claude-sonnet-4-6` | Bedrock model for LLM calls |
+| `BEDROCK_MODEL_ID` | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Bedrock model for LLM calls |
 | `GENERATED_BUCKET` | `app-scaffold-generated` | S3 bucket name for chat data |
 | `DURABLE_LAMBDA_NAME` | `app-scaffold-durable` | Name of the Python Lambda function |
+
+## Debugging production issues
+
+- **CloudWatch logs:** both Lambdas log to `/aws/lambda/<function-name>`. Check the Durable Lambda logs first for Bedrock errors, then the API Lambda logs for routing/parsing issues.
+- **Check Lambda env vars:** `aws lambda get-function-configuration --function-name '<name>' --query 'Environment.Variables'`.
+- **List available Bedrock models:** `aws bedrock list-foundation-models --region <region> --query 'modelSummaries[?contains(modelId, \`claude\`)].modelId'`.
+- **Model lifecycle matters:** models reach end-of-life; some newer models require AWS Marketplace subscription. Verify status with `modelLifecycle.status` in the list-foundation-models output.
+- **Lambda Function URL bodies are base64-encoded.** The bridge in `cmd/api/bridge.go` MUST check `req.IsBase64Encoded` and decode before passing to `http.Request`. Otherwise form values silently parse as empty.
 
 ## Making changes
 
