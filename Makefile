@@ -63,6 +63,15 @@ build/css: node_modules
 deploy: build
 	cd cdk && npm install && npx cdk deploy --require-approval never
 
+API_LAMBDA_NAME = AppScaffoldStack-ApiLambdaFunction8FC74655-E9NEQkyxGvqQ
+API_LAMBDA_REGION = us-east-1
+
+deploy/fast: build/templ
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o dist/api/bootstrap cmd/api/*.go
+	cd dist/api && zip -q ../bootstrap.zip bootstrap && cd ../..
+	aws lambda update-function-code --region $(API_LAMBDA_REGION) --function-name $(API_LAMBDA_NAME) --zip-file fileb://dist/bootstrap.zip
+	rm -f dist/bootstrap.zip
+
 # ─── Utilities ──────────────────────────────────────────────────────────────────
 
 clean:

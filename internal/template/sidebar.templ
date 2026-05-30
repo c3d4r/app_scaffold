@@ -20,7 +20,7 @@ templ Sidebar(chats []models.ChatSummary, currentChatID string) {
 		     x-transition:leave="transition-transform duration-200"
 		     x-transition:leave-start="translate-x-0"
 		     x-transition:leave-end="-translate-x-full"
-		     class="fixed md:relative inset-y-0 left-0 z-50 md:z-auto w-64 bg-white border-r border-gray-200 flex flex-col">
+		     class="fixed md:relative inset-y-0 left-0 z-50 md:z-auto w-64 h-screen bg-gray-50 border-r border-gray-200 flex flex-col">
 			<div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
 				<span class="font-semibold text-sm text-gray-700">Chats</span>
 				<button @click="open = false"

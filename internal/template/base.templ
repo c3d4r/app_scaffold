@@ -7,12 +7,31 @@ templ Base(title string) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ title } - App Scaffold</title>
+			<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E"/>
 			<link rel="stylesheet" href="/static/styles.css"/>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"/>
 			<script src="https://unpkg.com/htmx.org@2.0.4"></script>
 			<script defer src="https://unpkg.com/alpinejs@3.14.8"></script>
+			<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+			<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 		</head>
 		<body class="bg-white text-gray-900 antialiased">
 			{ children... }
+			<script>
+				function renderMathIn(el) {
+					if (window.renderMathInElement) {
+						renderMathInElement(el, {
+							delimiters: [
+								{ left: '\\(', right: '\\)', display: false },
+								{ left: '\\[', right: '\\]', display: true }
+							],
+							throwOnError: false
+						});
+					}
+				}
+				document.addEventListener('DOMContentLoaded', function () { renderMathIn(document.body); });
+				document.body.addEventListener('htmx:afterSwap', function (e) { renderMathIn(e.target); });
+			</script>
 		</body>
 	</html>
 }

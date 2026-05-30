@@ -118,11 +118,9 @@ func (h *Handler) handlePoll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fragment, err := h.store.GetFragment(r.Context(), chatID, msgID)
-	if err != nil {
-		http.Error(w, "fragment not found", http.StatusNotFound)
-		return
-	}
-
-	w.Write(fragment)
+	// Render from the stored message content via the same template used on a
+	// full page load, so live polling and reload produce identical markup
+	// (and identical markdown rendering). The persisted S3 fragment is no
+	// longer read; it is now vestigial.
+	template.Message(*target, chatID).Render(r.Context(), w)
 }
