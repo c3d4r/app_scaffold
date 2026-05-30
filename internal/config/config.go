@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"os"
+	"strconv"
+)
 
 type Config struct {
 	AppEnv              string
@@ -13,6 +16,7 @@ type Config struct {
 	CognitoDomain       string
 	CognitoRegion       string
 	CallbackURL         string
+	MaxUploadSizeBytes  int64
 }
 
 func Load() *Config {
@@ -27,6 +31,7 @@ func Load() *Config {
 		CognitoDomain:       getEnv("COGNITO_DOMAIN", ""),
 		CognitoRegion:       getEnv("COGNITO_REGION", ""),
 		CallbackURL:         getEnv("CALLBACK_URL", ""),
+		MaxUploadSizeBytes:  getEnvInt64("MAX_UPLOAD_SIZE_MB", 5) * 1024 * 1024,
 	}
 }
 
@@ -37,6 +42,15 @@ func (c *Config) IsProduction() bool {
 func getEnv(key, fallback string) string {
 	if v, ok := os.LookupEnv(key); ok {
 		return v
+	}
+	return fallback
+}
+
+func getEnvInt64(key string, fallback int64) int64 {
+	if v, ok := os.LookupEnv(key); ok {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			return n
+		}
 	}
 	return fallback
 }

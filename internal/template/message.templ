@@ -1,13 +1,45 @@
 package template
 
-import "github.com/c3d4r/app_scaffold/internal/models"
-import "github.com/c3d4r/app_scaffold/internal/render"
+import (
+	"strings"
+
+	"github.com/c3d4r/app_scaffold/internal/models"
+	"github.com/c3d4r/app_scaffold/internal/render"
+)
 
 templ Message(m models.Message, chatID string) {
 	if m.Role == "user" {
 		<div class="flex justify-end">
 			<div class="bg-blue-500 text-white rounded-2xl rounded-br-md px-4 py-2.5 max-w-[80%] shadow-sm whitespace-pre-wrap">
-				{ m.Content }
+				if m.Content != "" {
+					{ m.Content }
+				}
+				for _, att := range m.Attachments {
+					if strings.HasPrefix(att.Type, "image/") {
+						if att.PreSignedURL != "" {
+							<a href={ templ.SafeURL(att.PreSignedURL) } target="_blank">
+								<img src={ templ.SafeURL(att.PreSignedURL) }
+								     class="mt-2 max-w-xs max-h-48 rounded-lg border border-blue-400"
+								     alt={ att.Name }/>
+							</a>
+						} else {
+							<div class="mt-2 text-blue-200 text-xs">📎 { att.Name }</div>
+						}
+					} else {
+						if att.PreSignedURL != "" {
+							<a href={ templ.SafeURL(att.PreSignedURL) } target="_blank"
+							   class="mt-1 inline-flex items-center gap-1 text-blue-100 hover:text-white underline text-xs">
+								<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+									      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+								</svg>
+								{ att.Name }
+							</a>
+						} else {
+							<div class="mt-1 text-blue-200 text-xs">📄 { att.Name }</div>
+						}
+					}
+				}
 			</div>
 		</div>
 	} else if m.Status == "processing" {

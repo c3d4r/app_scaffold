@@ -1,3 +1,4 @@
+import base64
 import json
 import html
 import os
@@ -80,11 +81,57 @@ def build_conversation(chat: dict) -> list[dict]:
         if msg.get("status") == "processing":
             continue
         role = msg["role"]
-        messages.append({
-            "role": role,
-            "content": [{"text": msg["content"]}],
-        })
+        content_blocks = []
+        if msg.get("content"):
+            content_blocks.append({"text": msg["content"]})
+        for att in msg.get("attachments", []):
+            key = att["key"]
+            try:
+                data = read_file(key)
+                if not data:
+                    print(f"Attachment file is empty, skipping: {key}")
+                    continue
+                mime_type = att["type"]
+                if mime_type.startswith("image/"):
+                    fmt = _image_format(mime_type)
+                    content_blocks.append({
+                        "image": {
+                            "format": fmt,
+                            "source": {"bytes": data},
+                        }
+                    })
+                elif mime_type == "application/pdf":
+                    content_blocks.append({
+                        "document": {
+                            "format": "pdf",
+                            "name": att["name"],
+                            "source": {"bytes": data},
+                        }
+                    })
+                elif mime_type.startswith("text/") or mime_type == "text/markdown":
+                    text = data.decode("utf-8", errors="replace")
+                    content_blocks.append({
+                        "text": f"[File: {att['name']}]\n{text}"
+                    })
+            except Exception:
+                print(f"Failed to read attachment {key}:")
+                traceback.print_exc()
+
+        if content_blocks:
+            messages.append({"role": role, "content": content_blocks})
     return messages
+
+
+def _image_format(mime_type: str) -> str:
+    fmt = mime_type.split("/")[-1]
+    if fmt in ("jpeg", "png", "gif", "webp"):
+        return fmt
+    return "jpeg"
+
+
+def read_file(key: str) -> bytes:
+    resp = s3.get_object(Bucket=GENERATED_BUCKET, Key=key)
+    return resp["Body"].read()
 
 
 def build_fragment(text: str) -> str:

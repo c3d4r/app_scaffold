@@ -7,80 +7,90 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
 
+	"github.com/c3d4r/app_scaffold/internal/auth"
 	"github.com/c3d4r/app_scaffold/internal/models"
 	"github.com/c3d4r/app_scaffold/internal/template"
 )
 
-func (h *Handler) handleHome(w http.ResponseWriter, r *http.Request) {
-	user := h.userFromSession(r)
+func (h *Handler) handleHome(c echo.Context) error {
+	user := getUser(c)
 	if user != nil {
-		chats, err := h.store.ListChats(r.Context(), user.UserID)
+		chats, err := h.store.ListChats(c.Request().Context(), user.UserID)
 		if err == nil && len(chats) > 0 {
-			http.Redirect(w, r, "/"+chats[0].ID, http.StatusFound)
-			return
+			return c.Redirect(http.StatusFound, "/"+chats[0].ID)
 		}
 	}
-	h.handleCreateChat(w, r)
+	return h.handleCreateChat(c)
 }
 
-func (h *Handler) handleFavicon(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNoContent)
+func (h *Handler) handleFavicon(c echo.Context) error {
+	return c.NoContent(http.StatusNoContent)
 }
 
-func (h *Handler) handleCreateChat(w http.ResponseWriter, r *http.Request) {
-	user := h.userFromSession(r)
+func (h *Handler) handleCreateChat(c echo.Context) error {
+	user := getUser(c)
 	if user == nil {
-		http.Error(w, "not authenticated", http.StatusUnauthorized)
-		return
+		return c.String(http.StatusUnauthorized, "not authenticated")
 	}
 
 	chatID := uuid.New().String()
 	chat := models.NewChat(chatID)
 
-	if err := h.store.SaveChat(r.Context(), chat); err != nil {
+	if err := h.store.SaveChat(c.Request().Context(), chat); err != nil {
 		log.Printf("ERROR create chat: %v", err)
-		http.Error(w, "failed to create chat", http.StatusInternalServerError)
-		return
+		return c.String(http.StatusInternalServerError, "failed to create chat")
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	chats, _ := h.store.ListChats(r.Context(), user.UserID)
+	chats, _ := h.store.ListChats(c.Request().Context(), user.UserID)
 	chats = append([]models.ChatSummary{{
 		ID:        chatID,
 		Title:     "New conversation",
 		UpdatedAt: now,
 	}}, chats...)
-	if err := h.store.PutChatIndex(r.Context(), user.UserID, chats); err != nil {
+	if err := h.store.PutChatIndex(c.Request().Context(), user.UserID, chats); err != nil {
 		log.Printf("ERROR put chat index: %v", err)
 	}
 
-	http.Redirect(w, r, "/"+chatID, http.StatusFound)
+	return c.Redirect(http.StatusFound, "/"+chatID)
 }
 
-func (h *Handler) handleChat(w http.ResponseWriter, r *http.Request) {
-	chatID := r.PathValue("chatId")
+func (h *Handler) handleChat(c echo.Context) error {
+	chatID := c.Param("chatId")
 
-	chat, err := h.store.GetChat(r.Context(), chatID)
+	chat, err := h.store.GetChat(c.Request().Context(), chatID)
 	if err != nil {
 		log.Printf("ERROR GetChat(%q): %v", chatID, err)
-		http.Error(w, "failed to load chat", http.StatusInternalServerError)
-		return
+		return c.String(http.StatusInternalServerError, "failed to load chat")
 	}
 	if chat == nil {
 		chat = models.NewChat(chatID)
 	}
 
-	user := h.userFromSession(r)
+	user := getUser(c)
 
 	var chatList []models.ChatSummary
 	if user != nil {
-		chatList, _ = h.store.ListChats(r.Context(), user.UserID)
+		chatList, _ = h.store.ListChats(c.Request().Context(), user.UserID)
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := template.ChatPage(*chat, chatList, user).Render(r.Context(), w); err != nil {
-		http.Error(w, "failed to render", http.StatusInternalServerError)
+	h.injectAllAttachmentURLs(c.Request().Context(), chat)
+
+	c.Response().Header().Set("Content-Type", "text/html; charset=utf-8")
+	return template.ChatPage(*chat, chatList, user).Render(c.Request().Context(), c.Response().Writer)
+}
+
+func (h *Handler) injectAllAttachmentURLs(ctx context.Context, chat *models.Chat) {
+	for i := range chat.Messages {
+		for j := range chat.Messages[i].Attachments {
+			url, err := h.store.GetPreSignedURL(ctx, chat.Messages[i].Attachments[j].Key, 1*time.Hour)
+			if err != nil {
+				continue
+			}
+			chat.Messages[i].Attachments[j].PreSignedURL = url
+		}
 	}
 }
 
@@ -124,4 +134,11 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen-3] + "..."
+}
+
+func getUser(c echo.Context) *auth.Session {
+	if s, ok := c.Get("session").(*auth.Session); ok {
+		return s
+	}
+	return nil
 }

@@ -3,56 +3,42 @@ package handler
 import (
 	"net/http"
 	"net/url"
+
+	"github.com/labstack/echo/v4"
 )
 
-func (h *Handler) authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
 		if h.sessionStore == nil {
-			next.ServeHTTP(w, r)
-			return
+			return next(c)
 		}
 
-		cookie, err := r.Cookie("scaffold_session")
+		cookie, err := c.Cookie("scaffold_session")
 		if err != nil {
-			if h.cognito == nil {
-				redirectToDevSignIn(w, r)
-			} else {
-				redirectToLogin(w, r)
-			}
-			return
+			return redirectMissingSession(c, h.cognito == nil)
 		}
 
-		session, err := h.sessionStore.GetSession(r.Context(), cookie.Value)
+		session, err := h.sessionStore.GetSession(c.Request().Context(), cookie.Value)
 		if err != nil || session == nil || session.IsExpired() {
-			clearSessionCookie(w)
-			if h.cognito == nil {
-				redirectToDevSignIn(w, r)
-			} else {
-				redirectToLogin(w, r)
-			}
-			return
+			c.SetCookie(&http.Cookie{
+				Name:     "scaffold_session",
+				Value:    "",
+				Path:     "/",
+				HttpOnly: true,
+				MaxAge:   -1,
+			})
+			return redirectMissingSession(c, h.cognito == nil)
 		}
 
-		next.ServeHTTP(w, r)
-	})
+		c.Set("session", session)
+		return next(c)
+	}
 }
 
-func redirectToLogin(w http.ResponseWriter, r *http.Request) {
-	dest := "/auth/login?redirect=" + url.QueryEscape(r.URL.String())
-	http.Redirect(w, r, dest, http.StatusFound)
-}
-
-func redirectToDevSignIn(w http.ResponseWriter, r *http.Request) {
-	dest := "/auth/dev-sign-in?redirect=" + url.QueryEscape(r.URL.String())
-	http.Redirect(w, r, dest, http.StatusFound)
-}
-
-func clearSessionCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "scaffold_session",
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		MaxAge:   -1,
-	})
+func redirectMissingSession(c echo.Context, isDev bool) error {
+	u := "/auth/login?redirect=" + url.QueryEscape(c.Request().URL.String())
+	if isDev {
+		u = "/auth/dev-sign-in?redirect=" + url.QueryEscape(c.Request().URL.String())
+	}
+	return c.Redirect(http.StatusFound, u)
 }

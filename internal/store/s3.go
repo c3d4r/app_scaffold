@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -140,6 +141,43 @@ func (s *S3Store) PutChatIndex(ctx context.Context, userID string, chats []model
 		return fmt.Errorf("put chat index to s3: %w", err)
 	}
 	return nil
+}
+
+func (s *S3Store) PutFile(ctx context.Context, key string, data []byte, contentType string) error {
+	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(data),
+		ContentType: aws.String(contentType),
+	})
+	if err != nil {
+		return fmt.Errorf("put file to s3: %w", err)
+	}
+	return nil
+}
+
+func (s *S3Store) GetFile(ctx context.Context, key string) ([]byte, error) {
+	resp, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get file from s3: %w", err)
+	}
+	defer resp.Body.Close()
+	return io.ReadAll(resp.Body)
+}
+
+func (s *S3Store) GetPreSignedURL(ctx context.Context, key string, ttl time.Duration) (string, error) {
+	pc := s3.NewPresignClient(s.client)
+	req, err := pc.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	}, s3.WithPresignExpires(ttl))
+	if err != nil {
+		return "", fmt.Errorf("presign url: %w", err)
+	}
+	return req.URL, nil
 }
 
 func isKeyNotFound(err error) bool {

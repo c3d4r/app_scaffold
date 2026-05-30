@@ -1,11 +1,20 @@
 package models
 
+type Attachment struct {
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	Size         int64  `json:"size"`
+	Key          string `json:"key"`
+	PreSignedURL string `json:"-"`
+}
+
 type Message struct {
-	ID       string `json:"id"`
-	Role     string `json:"role"`
-	Content  string `json:"content"`
-	Status   string `json:"status"`
-	Fragment string `json:"fragment,omitempty"`
+	ID          string       `json:"id"`
+	Role        string       `json:"role"`
+	Content     string       `json:"content"`
+	Status      string       `json:"status"`
+	Fragment    string       `json:"fragment,omitempty"`
+	Attachments []Attachment `json:"attachments,omitempty"`
 }
 
 type Chat struct {

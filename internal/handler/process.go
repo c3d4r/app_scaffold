@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"html"
 	"log"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	ltypes "github.com/aws/aws-sdk-go-v2/service/lambda/types"
 
+	"github.com/c3d4r/app_scaffold/internal/models"
 	"github.com/c3d4r/app_scaffold/internal/store"
 )
 
@@ -60,11 +62,19 @@ func processInDev(ctx context.Context, chatStore store.ChatStore, bedrockClient 
 		if m.Status == "processing" {
 			continue
 		}
-		messages = append(messages, brtypes.Message{
-			Role: toConversationRole(m.Role),
-			Content: []brtypes.ContentBlock{
+		contentBlocks, err := buildConverseContentBlocks(ctx, chatStore, m)
+		if err != nil {
+			log.Printf("WARN build content blocks for msg %s: %v", m.ID, err)
+			contentBlocks = []brtypes.ContentBlock{
 				&brtypes.ContentBlockMemberText{Value: m.Content},
-			},
+			}
+		}
+		if len(contentBlocks) == 0 {
+			continue
+		}
+		messages = append(messages, brtypes.Message{
+			Role:    toConversationRole(m.Role),
+			Content: contentBlocks,
 		})
 	}
 
@@ -104,6 +114,57 @@ func processInDev(ctx context.Context, chatStore store.ChatStore, bedrockClient 
 	}
 
 	return nil
+}
+
+func buildConverseContentBlocks(ctx context.Context, chatStore store.ChatStore, msg models.Message) ([]brtypes.ContentBlock, error) {
+	var blocks []brtypes.ContentBlock
+
+	if msg.Content != "" {
+		blocks = append(blocks, &brtypes.ContentBlockMemberText{Value: msg.Content})
+	}
+
+	for _, att := range msg.Attachments {
+		data, err := chatStore.GetFile(ctx, att.Key)
+		if err != nil {
+			log.Printf("WARN skip attachment %s: %v", att.Key, err)
+			continue
+		}
+		if len(data) == 0 {
+			log.Printf("WARN skip empty attachment %s", att.Key)
+			continue
+		}
+
+		switch {
+		case strings.HasPrefix(att.Type, "image/"):
+			format := strings.TrimPrefix(att.Type, "image/")
+			if format == "jpeg" {
+				format = "jpeg"
+			}
+			blocks = append(blocks, &brtypes.ContentBlockMemberImage{
+				Value: brtypes.ImageBlock{
+					Format: brtypes.ImageFormat(format),
+					Source: &brtypes.ImageSourceMemberBytes{
+						Value: data,
+					},
+				},
+			})
+		case att.Type == "application/pdf":
+			blocks = append(blocks, &brtypes.ContentBlockMemberDocument{
+				Value: brtypes.DocumentBlock{
+					Name:   &att.Name,
+					Format: brtypes.DocumentFormatPdf,
+					Source: &brtypes.DocumentSourceMemberBytes{
+						Value: data,
+					},
+				},
+			})
+		case strings.HasPrefix(att.Type, "text/"):
+			text := fmt.Sprintf("[File: %s]\n%s", att.Name, string(data))
+			blocks = append(blocks, &brtypes.ContentBlockMemberText{Value: text})
+		}
+	}
+
+	return blocks, nil
 }
 
 func EchoProcessStarter(chatStore store.ChatStore) ProcessStarter {

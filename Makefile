@@ -64,13 +64,22 @@ deploy: build
 	cd cdk && npm install && npx cdk deploy --require-approval never
 
 API_LAMBDA_NAME = AppScaffoldStack-ApiLambdaFunction8FC74655-E9NEQkyxGvqQ
-API_LAMBDA_REGION = us-east-1
+DURABLE_LAMBDA_NAME_DEPLOY = AppScaffoldStack-DurableLambdaFunctionB2837D43-dIh4oXXsr6SG
+LAMBDA_REGION = us-east-1
 
 deploy/fast: build/templ
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o dist/api/bootstrap cmd/api/*.go
 	cd dist/api && zip -q ../bootstrap.zip bootstrap && cd ../..
-	aws lambda update-function-code --region $(API_LAMBDA_REGION) --function-name $(API_LAMBDA_NAME) --zip-file fileb://dist/bootstrap.zip
+	aws lambda update-function-code --region $(LAMBDA_REGION) --function-name $(API_LAMBDA_NAME) --zip-file fileb://dist/bootstrap.zip
 	rm -f dist/bootstrap.zip
+
+deploy/fast-durable:
+	cp lambdas/durable/main.py dist/durable/
+	cd dist/durable && zip -q ../durable.zip main.py && cd ../..
+	aws lambda update-function-code --region $(LAMBDA_REGION) --function-name $(DURABLE_LAMBDA_NAME_DEPLOY) --zip-file fileb://dist/durable.zip
+	rm -f dist/durable.zip
+
+deploy/fast-all: deploy/fast deploy/fast-durable
 
 # ─── Utilities ──────────────────────────────────────────────────────────────────
 

@@ -1,20 +1,65 @@
 package template
 
 templ ChatInput(chatID string) {
-	<form hx-post={ "/" + chatID }
-	      hx-swap="beforeend"
-	      hx-target="#messages"
-	      hx-on--after-request="this.reset()"
-	      class="flex gap-3 p-4">
-		<input type="text"
-		       name="content"
-		       placeholder="Type a message..."
-		       autocomplete="off"
-		       required="required"
-		       class="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
-		<button type="submit"
-		        class="bg-blue-500 text-white rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-blue-600 active:bg-blue-700 transition-colors">
-			Send
-		</button>
-	</form>
+	<div x-data="fileUpload()" class="relative">
+		<form hx-post={ "/" + chatID }
+		      hx-encoding="multipart/form-data"
+		      hx-swap="beforeend"
+		      hx-target="#messages"
+		      hx-on--after-request="this.reset(); $data.reset()"
+		      enctype="multipart/form-data"
+		      @dragover.prevent="dragging = true"
+		      @dragleave.prevent="dragging = false"
+		      @drop.prevent="handleDrop($event)"
+		      class="flex flex-col gap-2 p-4">
+			<div x-show="previews.length > 0" class="flex flex-wrap gap-2">
+				<template x-for="(p, idx) in previews" :key="idx">
+					<div class="relative group inline-flex">
+						<img x-show="p.isImage" :src="p.dataUrl"
+						     class="h-16 w-16 object-cover rounded-lg border border-gray-200"/>
+						<span x-show="!p.isImage"
+						      class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-700">
+							<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+								      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+							</svg>
+							<span x-text="p.name" class="max-w-[120px] truncate"></span>
+						</span>
+						<button type="button" @click="remove(idx)"
+						        class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none hover:bg-red-600">
+							&times;
+						</button>
+					</div>
+				</template>
+			</div>
+			<div class="flex gap-3">
+				<button type="button" @click="$refs.fileInput.click()"
+				        class="p-2.5 rounded-xl border border-gray-300 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+				        aria-label="Attach files">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+						      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+					</svg>
+				</button>
+				<input type="text"
+				       name="content"
+				       placeholder="Type a message..."
+				       autocomplete="off"
+				       class="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
+				<input type="file" id={ "file-input-" + chatID } name="files" multiple
+				       x-ref="fileInput"
+				       @change="handleFiles($event)"
+				       class="hidden"
+				       accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain,text/csv,text/html,.md,.markdown"/>
+				<button type="submit"
+				        class="bg-blue-500 text-white rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-blue-600 active:bg-blue-700 transition-colors">
+					Send
+				</button>
+			</div>
+		</form>
+		<div x-show="dragging" x-cloak
+		     class="absolute inset-0 bg-blue-50/90 border-2 border-dashed border-blue-400 rounded-xl flex items-center justify-center z-10 pointer-events-none">
+			<span class="text-blue-600 text-sm font-medium">Drop files here</span>
+		</div>
+	</div>
 }

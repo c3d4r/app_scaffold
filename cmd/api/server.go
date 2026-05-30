@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/labstack/echo/v4"
 
 	appconfig "github.com/c3d4r/app_scaffold/internal/config"
 	"github.com/c3d4r/app_scaffold/internal/auth"
@@ -77,7 +78,13 @@ func createHandler() (http.Handler, error) {
 		}
 	}
 
-	return handler.New(chatStore, starter).WithAuth(sessionStore, cognito, cognitoClient, cfg.CallbackURL).Routes(), nil
+	h := handler.New(chatStore, starter).WithAuth(sessionStore, cognito, cognitoClient, cfg.CallbackURL).WithMaxUpload(cfg.MaxUploadSizeBytes).Routes()
+
+	if e, ok := h.(*echo.Echo); ok && !cfg.IsProduction() {
+		e.Static("/uploads", "data/uploads")
+	}
+
+	return h, nil
 }
 
 func startDevServer(h http.Handler) {

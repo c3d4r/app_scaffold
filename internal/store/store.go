@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/c3d4r/app_scaffold/internal/models"
 )
@@ -13,4 +14,8 @@ type ChatStore interface {
 	PutFragment(ctx context.Context, chatID, msgID string, html []byte) error
 	ListChats(ctx context.Context, userID string) ([]models.ChatSummary, error)
 	PutChatIndex(ctx context.Context, userID string, chats []models.ChatSummary) error
+
+	PutFile(ctx context.Context, key string, data []byte, contentType string) error
+	GetFile(ctx context.Context, key string) ([]byte, error)
+	GetPreSignedURL(ctx context.Context, key string, ttl time.Duration) (string, error)
 }

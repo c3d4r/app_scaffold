@@ -3,6 +3,9 @@ package handler
 import (
 	"net/http"
 
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+
 	"github.com/c3d4r/app_scaffold/internal/auth"
 	"github.com/c3d4r/app_scaffold/internal/store"
 )
@@ -16,6 +19,7 @@ type Handler struct {
 	cognito       *auth.CognitoConfig
 	cognitoClient *CognitoClient
 	callbackURL   string
+	maxUploadSize int64
 }
 
 func New(store store.ChatStore, processMsg ProcessStarter) *Handler {
@@ -33,30 +37,52 @@ func (h *Handler) WithAuth(sessionStore auth.SessionStore, cognito *auth.Cognito
 	return h
 }
 
-func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+func (h *Handler) WithMaxUpload(size int64) *Handler {
+	h.maxUploadSize = size
+	return h
+}
 
-	mux.HandleFunc("GET /about", h.handlePublic)
-	mux.HandleFunc("/auth/login", h.handleLoginPage)
-	mux.HandleFunc("GET /auth/signup", h.handleSignupPage)
-	mux.HandleFunc("POST /auth/signup", h.handleSignupPage)
-	mux.HandleFunc("GET /auth/confirm", h.handleConfirmPage)
-	mux.HandleFunc("POST /auth/confirm", h.handleConfirmPage)
-	mux.HandleFunc("GET /auth/callback", h.handleCallback)
-	mux.HandleFunc("POST /auth/logout", h.handleLogout)
+func (h *Handler) Routes() http.Handler {
+	e := echo.New()
+	e.HideBanner = true
+	e.HidePort = true
+
+	e.Use(middleware.Recover())
+	e.Use(middleware.RequestID())
+
+	e.GET("/about", h.handlePublic)
+	e.POST("/auth/login", h.handleLoginPage)
+	e.GET("/auth/login", h.handleLoginPage)
+	e.GET("/auth/signup", h.handleSignupPage)
+	e.POST("/auth/signup", h.handleSignupPage)
+	e.GET("/auth/confirm", h.handleConfirmPage)
+	e.POST("/auth/confirm", h.handleConfirmPage)
+	e.GET("/auth/callback", h.handleCallback)
+	e.POST("/auth/logout", h.handleLogout)
 
 	if h.cognito == nil {
-		mux.HandleFunc("GET /auth/dev-sign-in", h.handleSignInDev)
+		e.GET("/auth/dev-sign-in", h.handleSignInDev)
+		e.Static("/uploads", "data/uploads")
 	}
 
-	protected := http.NewServeMux()
-	protected.HandleFunc("GET /{$}", h.handleHome)
-	protected.HandleFunc("POST /chats", h.handleCreateChat)
-	protected.HandleFunc("GET /favicon.ico", h.handleFavicon)
-	protected.HandleFunc("GET /{chatId}", h.handleChat)
-	protected.HandleFunc("POST /{chatId}", h.handleSend)
-	protected.HandleFunc("GET /{chatId}/msgs/{msgId}", h.handlePoll)
+	g := e.Group("")
+	g.Use(h.authMiddleware)
+	g.GET("/", h.handleHome)
+	g.POST("/chats", h.handleCreateChat)
+	g.GET("/favicon.ico", h.handleFavicon)
+	g.GET("/:chatId", h.handleChat)
+	g.POST("/:chatId", h.handleSend)
+	g.GET("/:chatId/msgs/:msgId", h.handlePoll)
 
-	mux.Handle("/", h.authMiddleware(protected))
-	return mux
+	e.HTTPErrorHandler = func(err error, c echo.Context) {
+		code := http.StatusInternalServerError
+		msg := "Internal Server Error"
+		if he, ok := err.(*echo.HTTPError); ok {
+			code = he.Code
+			msg = he.Message.(string)
+		}
+		c.String(code, msg)
+	}
+
+	return e
 }

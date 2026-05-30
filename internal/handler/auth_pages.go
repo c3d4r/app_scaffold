@@ -5,50 +5,45 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/labstack/echo/v4"
+
 	"github.com/c3d4r/app_scaffold/internal/auth"
 	"github.com/c3d4r/app_scaffold/internal/template"
 )
 
-func (h *Handler) handleLoginPage(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
+func (h *Handler) handleLoginPage(c echo.Context) error {
+	if c.Request().Method == http.MethodGet {
 		if h.cognitoClient == nil {
-			http.Redirect(w, r, "/auth/dev-sign-in", http.StatusFound)
-			return
+			return c.Redirect(http.StatusFound, "/auth/dev-sign-in")
 		}
-		template.LoginPage("").Render(r.Context(), w)
-		return
+		return template.LoginPage("").Render(c.Request().Context(), c.Response().Writer)
 	}
 
 	if h.cognitoClient == nil {
-		http.Error(w, "auth not configured", http.StatusInternalServerError)
-		return
+		return c.String(http.StatusInternalServerError, "auth not configured")
 	}
 
-	username := strings.TrimSpace(r.FormValue("username"))
-	password := r.FormValue("password")
+	username := strings.TrimSpace(c.FormValue("username"))
+	password := c.FormValue("password")
 
 	if username == "" || password == "" {
-		template.LoginPage("Username and password are required.").Render(r.Context(), w)
-		return
+		return template.LoginPage("Username and password are required.").Render(c.Request().Context(), c.Response().Writer)
 	}
 
-	result, challenge, err := h.cognitoClient.SignIn(r.Context(), username, password)
+	result, challenge, err := h.cognitoClient.SignIn(c.Request().Context(), username, password)
 	if err != nil {
 		log.Printf("sign in error for %q: %v", username, err)
-		template.LoginPage("Invalid username or password.").Render(r.Context(), w)
-		return
+		return template.LoginPage("Invalid username or password.").Render(c.Request().Context(), c.Response().Writer)
 	}
 
 	if challenge != nil {
-		template.LoginPage("Account requires a password change. Please use a different sign-in method.").Render(r.Context(), w)
-		return
+		return template.LoginPage("Account requires a password change. Please use a different sign-in method.").Render(c.Request().Context(), c.Response().Writer)
 	}
 
-	claims, err := h.cognito.VerifyIDToken(r.Context(), result.IDToken)
+	claims, err := h.cognito.VerifyIDToken(c.Request().Context(), result.IDToken)
 	if err != nil {
 		log.Printf("verify id token: %v", err)
-		template.LoginPage("Failed to verify identity.").Render(r.Context(), w)
-		return
+		return template.LoginPage("Failed to verify identity.").Render(c.Request().Context(), c.Response().Writer)
 	}
 
 	displayName := claims.Username
@@ -57,102 +52,87 @@ func (h *Handler) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session := auth.NewSession(claims.Sub, displayName, claims.Email)
-	if err := h.sessionStore.PutSession(r.Context(), session); err != nil {
+	if err := h.sessionStore.PutSession(c.Request().Context(), session); err != nil {
 		log.Printf("save session: %v", err)
-		template.LoginPage("Failed to create session.").Render(r.Context(), w)
-		return
+		return template.LoginPage("Failed to create session.").Render(c.Request().Context(), c.Response().Writer)
 	}
 
-	http.SetCookie(w, &http.Cookie{
+	c.SetCookie(&http.Cookie{
 		Name:     "scaffold_session",
 		Value:    session.ID,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   c.Request().TLS != nil,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   86400,
 	})
 
-	dest := r.URL.Query().Get("redirect")
+	dest := c.QueryParam("redirect")
 	if dest == "" {
 		dest = "/default"
 	}
-	http.Redirect(w, r, dest, http.StatusFound)
+	return c.Redirect(http.StatusFound, dest)
 }
 
-func (h *Handler) handleSignupPage(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
+func (h *Handler) handleSignupPage(c echo.Context) error {
+	if c.Request().Method == http.MethodGet {
 		if h.cognitoClient == nil {
-			http.Error(w, "auth not configured", http.StatusInternalServerError)
-			return
+			return c.String(http.StatusInternalServerError, "auth not configured")
 		}
-		template.SignupPage("").Render(r.Context(), w)
-		return
+		return template.SignupPage("").Render(c.Request().Context(), c.Response().Writer)
 	}
 
 	if h.cognitoClient == nil {
-		http.Error(w, "auth not configured", http.StatusInternalServerError)
-		return
+		return c.String(http.StatusInternalServerError, "auth not configured")
 	}
 
-	username := strings.TrimSpace(r.FormValue("username"))
-	email := strings.TrimSpace(r.FormValue("email"))
-	password := r.FormValue("password")
+	username := strings.TrimSpace(c.FormValue("username"))
+	email := strings.TrimSpace(c.FormValue("email"))
+	password := c.FormValue("password")
 
 	if username == "" || email == "" || password == "" {
-		template.SignupPage("All fields are required.").Render(r.Context(), w)
-		return
+		return template.SignupPage("All fields are required.").Render(c.Request().Context(), c.Response().Writer)
 	}
 
 	if len(password) < 8 {
-		template.SignupPage("Password must be at least 8 characters.").Render(r.Context(), w)
-		return
+		return template.SignupPage("Password must be at least 8 characters.").Render(c.Request().Context(), c.Response().Writer)
 	}
 
-	if err := h.cognitoClient.SignUp(r.Context(), username, password, email); err != nil {
+	if err := h.cognitoClient.SignUp(c.Request().Context(), username, password, email); err != nil {
 		log.Printf("sign up error for %q: %v", username, err)
 		msg := "Sign up failed. Username may already exist."
 		if strings.Contains(err.Error(), "UsernameExistsException") {
 			msg = "An account with that username already exists."
 		}
-		template.SignupPage(msg).Render(r.Context(), w)
-		return
+		return template.SignupPage(msg).Render(c.Request().Context(), c.Response().Writer)
 	}
 
-	dest := "/auth/confirm?username=" + username
-	log.Printf("user %q signed up, redirecting to confirm", username)
-	http.Redirect(w, r, dest, http.StatusFound)
+	return c.Redirect(http.StatusFound, "/auth/confirm?username="+username)
 }
 
-func (h *Handler) handleConfirmPage(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) handleConfirmPage(c echo.Context) error {
 	if h.cognitoClient == nil {
-		http.Error(w, "auth not configured", http.StatusInternalServerError)
-		return
+		return c.String(http.StatusInternalServerError, "auth not configured")
 	}
 
-	username := r.URL.Query().Get("username")
-	if r.Method == http.MethodGet {
+	username := c.QueryParam("username")
+	if c.Request().Method == http.MethodGet {
 		if username == "" {
-			http.Error(w, "missing username", http.StatusBadRequest)
-			return
+			return c.String(http.StatusBadRequest, "missing username")
 		}
-		template.ConfirmPage(username, "", "").Render(r.Context(), w)
-		return
+		return template.ConfirmPage(username, "", "").Render(c.Request().Context(), c.Response().Writer)
 	}
 
-	code := strings.TrimSpace(r.FormValue("code"))
+	code := strings.TrimSpace(c.FormValue("code"))
 
 	if username == "" || code == "" {
-		template.ConfirmPage(username, "Username and code are required.", "").Render(r.Context(), w)
-		return
+		return template.ConfirmPage(username, "Username and code are required.", "").Render(c.Request().Context(), c.Response().Writer)
 	}
 
-	if err := h.cognitoClient.ConfirmSignUp(r.Context(), username, code); err != nil {
+	if err := h.cognitoClient.ConfirmSignUp(c.Request().Context(), username, code); err != nil {
 		log.Printf("confirm error for %q: %v", username, err)
-		msg := "Invalid or expired confirmation code."
-		template.ConfirmPage(username, msg, "").Render(r.Context(), w)
-		return
+		return template.ConfirmPage(username, "Invalid or expired confirmation code.", "").Render(c.Request().Context(), c.Response().Writer)
 	}
 
-	template.ConfirmPage("", "", "Account confirmed! You can now sign in.").Render(r.Context(), w)
+	return template.ConfirmPage("", "", "Account confirmed! You can now sign in.").Render(c.Request().Context(), c.Response().Writer)
 }

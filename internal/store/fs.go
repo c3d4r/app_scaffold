@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/c3d4r/app_scaffold/internal/models"
 )
@@ -85,4 +86,20 @@ func (s *FSStore) PutChatIndex(_ context.Context, userID string, chats []models.
 		return fmt.Errorf("marshal chat index: %w", err)
 	}
 	return os.WriteFile(filepath.Join(dir, "chats.json"), data, 0644)
+}
+
+func (s *FSStore) PutFile(_ context.Context, key string, data []byte, _ string) error {
+	fullPath := filepath.Join(s.root, key)
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+		return fmt.Errorf("mkdir: %w", err)
+	}
+	return os.WriteFile(fullPath, data, 0644)
+}
+
+func (s *FSStore) GetFile(_ context.Context, key string) ([]byte, error) {
+	return os.ReadFile(filepath.Join(s.root, key))
+}
+
+func (s *FSStore) GetPreSignedURL(_ context.Context, key string, _ time.Duration) (string, error) {
+	return "/uploads/" + key, nil
 }

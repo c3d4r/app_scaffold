@@ -31,6 +31,67 @@ templ Base(title string) {
 				}
 				document.addEventListener('DOMContentLoaded', function () { renderMathIn(document.body); });
 				document.body.addEventListener('htmx:afterSwap', function (e) { renderMathIn(e.target); });
+
+				document.addEventListener('alpine:init', function () {
+					Alpine.data('fileUpload', function () {
+						return {
+							dragging: false,
+							previews: [],
+							reset() {
+								this.dragging = false;
+								this.previews = [];
+								const input = this.$refs.fileInput;
+								if (input) input.value = '';
+							},
+							remove(idx) {
+								this.previews.splice(idx, 1);
+								const dt = new DataTransfer();
+								const input = this.$refs.fileInput;
+								if (!input || !input.files) return;
+								for (let i = 0; i < input.files.length; i++) {
+									if (i !== idx) dt.items.add(input.files[i]);
+								}
+								input.files = dt.files;
+							},
+							handleFiles(e) {
+								const files = e.target.files || (e.dataTransfer && e.dataTransfer.files);
+								if (!files) return;
+								for (let i = 0; i < files.length; i++) {
+									const f = files[i];
+									const isImage = f.type.startsWith('image/');
+									const reader = new FileReader();
+									const idx = this.previews.length;
+									reader.onload = (ev) => {
+										this.previews.push({
+											name: f.name,
+											size: f.size,
+											type: f.type,
+											isImage: isImage,
+											dataUrl: isImage ? ev.target.result : null
+										});
+									};
+									if (isImage) {
+										reader.readAsDataURL(f);
+									} else {
+										reader.onload({ target: { result: null } });
+									}
+								}
+							},
+							handleDrop(e) {
+								this.dragging = false;
+								const input = this.$refs.fileInput;
+								if (!input) return;
+								const dt = new DataTransfer();
+								const existing = Array.from(input.files || []);
+								const incoming = Array.from(e.dataTransfer.files);
+								existing.forEach(f => dt.items.add(f));
+								incoming.forEach(f => dt.items.add(f));
+								input.files = dt.files;
+								this.handleFiles({ target: input });
+							}
+						};
+					});
+				});
 			</script>
 		</body>
 	</html>
